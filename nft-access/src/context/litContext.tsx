@@ -1,15 +1,17 @@
-import { createContext, useContext, useState } from "react";
+"use client";
+import { createContext, useContext, useEffect, useState } from "react";
 import * as LitJsSdk from "@lit-protocol/lit-node-client";
 type LC = {
   client: LitJsSdk.LitNodeClient | null;
   jwt: string;
   jwtConnect: () => void;
+  verified: boolean;
 };
 
 const LitContext = createContext<LC>({} as LC);
 export const accessControlConditions = [
   {
-    contractAddress: "0xAc67466ec868025Ca3D1aaBFe54E5B13Cd0a4275",
+    contractAddress: "0x48D862d51F7107394f4362d67D34B3483Bb91b43",
     standardContractType: "ERC721",
     chain: "mumbai",
     method: "balanceOf",
@@ -28,6 +30,7 @@ export function LitContextProvider(props: any) {
   const [jwt, setJwt] = useState<string>("");
   const [ciphertext, setCiphertext] = useState<string>("");
   const [dataToEncryptHash, setDataToEncryptHash] = useState<string>("");
+  const [verified, setVerified] = useState<boolean>(false);
   async function jwtConnect() {
     const litNodeClient = new LitJsSdk.LitNodeClient({});
     await litNodeClient.connect();
@@ -40,6 +43,15 @@ export function LitContextProvider(props: any) {
         authSig,
       });
       setJwt(_jwt);
+
+      if (!_jwt || !litNodeClient) {
+        console.log("no jwt or client");
+      }
+      const result = LitJsSdk.verifyJwt({
+        jwt: _jwt,
+        publicKey: litNodeClient.networkPubKey!,
+      });
+      setVerified(result.verified);
     } catch (e) {
       console.log("error", e);
     }
@@ -80,6 +92,7 @@ export function LitContextProvider(props: any) {
     return { decryptedString };
   }
 
+  useEffect(() => {}, [client, jwt]);
   return (
     <>
       <LitContext.Provider
@@ -87,6 +100,7 @@ export function LitContextProvider(props: any) {
           jwt,
           client,
           jwtConnect,
+          verified,
         }}
       >
         {props.children}
